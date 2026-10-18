@@ -995,7 +995,7 @@
           { label: 'Fahrzeuge:', val: 'Zu Beginn der Fortbildungen sind die Fahrzeuge vorzuziehen und auf dem Parkplatz vor dem Gebäude abzuparken' },
           { label: 'Vorträge:', val: 'Eine Vortragsliste findet ihr unter I_Zug-interne Fortbildung-Vorträge'},
           { label: 'Vorträge:', val: 'Wenn ihr eigene Vorträge habt, ergänzt diese gerne selbstständig' }, 
-          { label: 'Zugkasse: 12€ per Monat für Tee/Kaffee/PW-Frühstück'} 
+          { label: 'Zugkasse: 12€ pro Monat für Tee/Kaffee/PW-Frühstück'} 
 
         ]
       },
@@ -1153,45 +1153,6 @@
           { label: 'Kaffeethermen:', val: 'min. 1x im Monat sind die Kaffeethermen mit einem Spültab und Wasser über Nacht zu reinigen'},
           { label: 'Einsatzpfand:', val: 'zur Küche bringen und neue Kisten holen'}
         ]
-      },
-
-      'erste_hilfe': {
-        title: 'Erste Hilfe',
-        type: 'buttons',
-        items: [
-          { label: 'xABCDE-Schema', target: 'erste_hilfe_abcde' },
-          { label: 'Blood-Sweep/Initial', target: 'erste_hilfe_blood' },
-          { label: 'Body-Check', target: 'erste_hilfe_body' },
-          { label: 'Reanimation', target: 'erste_hilfe_reanimation' },
-          { label: 'Standard-Maßnahmen', target: 'erste_hilfe_standard' }
-        ]
-      },
-      'erste_hilfe_abcde': {
-        title: 'xABCDE-Schema',
-        type: 'cards',
-        items: [{ label: 'Bitte die relevanten Schritte des xABCDE-Schemas beachten.' }]
-      },
-      'erste_hilfe_blood': {
-        title: 'Blood-Sweep/Initial',
-        type: 'cards',
-        items: [{ label: 'Bitte den Initial-Check und Blood-Sweep nach dem jeweiligen Schema durchführen.' }]
-      },
-      'erste_hilfe_body': {
-        title: 'Body-Check',
-        type: 'cards',
-        items: [{ label: 'Bitte den Body-Check sorgfältig durchführen und dokumentieren.' }]
-      },
-      'erste_hilfe_reanimation': {
-        title: 'Reanimation',
-        type: 'cards',
-        items: [{ label: 'Bitte die Reanimations-Schritte nach dem aktuellen Standardverfahren befolgen.' }]
-      },
-      'erste_hilfe_standard': {
-        title: 'Standard-Maßnahmen',
-        type: 'buttons',
-        items: [
-          { label: 'Beatmung', target: 'erste_hilfe_beatmung' },
-          { label: 'Stabile Seitenlage', target: 'erste_hilfe_seitenlage' },        ]
       },
 
       'bepo': {
@@ -1710,6 +1671,8 @@
                     navigateTo(item.target);
                   } else if (item.img) {
                     openLightbox(item.img, item.label);
+                  } else if (item.image) {
+                    openLightbox(item.image, item.label);
                   } else if (item.passwordProtected) {
                     openPasswordModal('internal_ablaeufe');
                   } else if (item.url) {
