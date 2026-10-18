@@ -1,0 +1,1932 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <!-- PWA Einstellungen für das iPhone -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a2540">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Streifenhelfer">
+<link rel="apple-touch-icon" href="Zuglogo.png">
+
+<!-- Service Worker starten -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(error => {
+        console.log('ServiceWorker registration failed (expected in preview): ', error);
+      });
+    });
+  }
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Streifenhelfer</title>
+  <style>
+    :root {
+      --primary-navy: #0a2540;
+      --police-blue: #0056b3;
+      --police-blue-hover: #003d80;
+      --accent-gold: #f1c40f;
+      --bg-gray: #f4f6f9;
+      --card-bg: #ffffff;
+      --text-dark: #1e293b;
+      --text-muted: #64748b;
+      --danger-red: #dc2626;
+      --danger-red-hover: #b91c1c;
+      --border-color: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-gray);
+      color: var(--text-dark);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Header */
+    header {
+      background-color: var(--primary-navy);
+      color: #ffffff;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 10;
+      min-height: 60px;
+    }
+
+    .header-title-container {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      padding-right: 10px;
+      overflow: hidden;
+    }
+
+    .app-subtitle {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent-gold);
+      font-weight: 700;
+    }
+
+    .header-title {
+      font-size: 17px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .search-toggle-btn {
+      background: none;
+      border: none;
+      color: #ffffff;
+      cursor: pointer;
+      padding: 6px;
+      display: none; /* Only visible on list pages */
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+
+    .search-toggle-btn:active {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .search-toggle-btn svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Search Container */
+    .search-bar-container {
+      background-color: var(--primary-navy);
+      padding: 0 16px 12px 16px;
+      display: none;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .search-bar-container.active {
+      display: block;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      font-size: 15px;
+      outline: none;
+      background: #ffffff;
+      color: var(--text-dark);
+      padding-right: 44px;
+    }
+
+    .search-bar-inner {
+      position: relative;
+    }
+
+    .search-clear-btn {
+      position: absolute;
+      top: 50%;
+      right: 14px;
+      transform: translateY(-50%);
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 6px;
+      line-height: 1;
+      border-radius: 50%;
+    }
+
+    .search-clear-btn:hover {
+      color: var(--police-blue);
+    }
+
+    .search-meta {
+      margin-top: 8px;
+      color: #dbeafe;
+      font-size: 13px;
+      min-height: 1.2em;
+    }
+
+    /* Main Content Area */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .grid-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Spacer am Ende der Liste, damit nichts unter dem Zurück-Button verschwindet */
+    .grid-container::after {
+      content: "";
+      display: block;
+      height: 110px; 
+      flex-shrink: 0;
+    }
+
+    /* Buttons */
+    .btn {
+      background-color: var(--card-bg);
+      color: var(--police-blue);
+      border: 1.5px solid var(--border-color);
+      padding: 16px 18px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+      background-color: #ebf5ff;
+      border-color: var(--police-blue);
+    }
+
+    .btn-arrow {
+      color: var(--text-muted);
+      font-size: 18px;
+    }
+
+    .btn-danger {
+      background-color: var(--danger-red);
+      color: #ffffff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+    }
+
+    .btn-danger:active {
+      background-color: var(--danger-red-hover);
+    }
+
+    /* Cards / Info Boxes */
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 10px;
+      padding: 14px 16px;
+      border-left: 4px solid var(--police-blue);
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      line-height: 1.4;
+      cursor: default;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .card.clickable {
+      cursor: pointer;
+    }
+
+    .card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-title {
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .card-value {
+      font-weight: 700;
+      color: var(--police-blue);
+      text-align: right;
+    }
+
+    .doc-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .table-section {
+      background-color: var(--card-bg);
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 12px;
+      overflow-x: auto;
+    }
+
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .info-table th,
+    .info-table td {
+      border: 1px solid var(--border-color);
+      padding: 8px 6px;
+      text-align: center;
+    }
+
+    .info-table th {
+      background-color: #eff6ff;
+      color: var(--police-blue);
+      font-weight: 700;
+    }
+
+    .info-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-left: 4px solid var(--accent-gold);
+      background-color: #fffbe6;
+      color: var(--text-dark);
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background-color: var(--card-bg);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+
+    .checklist-item:active {
+      transform: scale(0.99);
+    }
+
+    .checklist-checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--police-blue);
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--police-blue);
+      font-size: 14px;
+      flex-shrink: 0;
+      background-color: #ffffff;
+    }
+
+    .checklist-item.checked {
+      background-color: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .checklist-item.checked .checklist-checkbox {
+      background-color: var(--police-blue);
+      color: #ffffff;
+      border-color: var(--police-blue);
+    }
+
+    .checklist-item.checked .checklist-text {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .checklist-text {
+      color: var(--text-dark);
+      line-height: 1.4;
+      font-size: 14px;
+    }
+
+    .collapsible-section {
+      background-color: var(--card-bg);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .collapsible-trigger {
+      width: 100%;
+      background: linear-gradient(90deg, #eff6ff 0%, #f8fbff 100%);
+      border: none;
+      padding: 14px 16px;
+      text-align: left;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--police-blue);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .collapsible-content {
+      display: none;
+      padding: 0 16px 14px 16px;
+      background-color: #fcfdff;
+    }
+
+    .collapsible-section.open .collapsible-content {
+      display: block;
+    }
+
+    .collapsible-section.open .collapsible-trigger .collapsible-arrow {
+      transform: rotate(180deg);
+    }
+
+    .collapsible-arrow {
+      transition: transform 0.2s ease;
+      font-size: 16px;
+      color: var(--text-muted);
+    }
+
+    .collapsible-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .collapsible-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      background-color: #f8fafc;
+      border: 1px solid var(--border-color);
+      color: var(--text-dark);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    /* Fixed Bottom Bar for Back Button */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(244, 246, 249, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 12px 16px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: center;
+      z-index: 20;
+    }
+
+    .btn-back {
+      background-color: var(--primary-navy);
+      color: #ffffff;
+      border: none;
+      width: 100%;
+      max-width: 600px;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-back:active {
+      background-color: #05182b;
+      transform: scale(0.99);
+    }
+
+    .no-results {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 20px;
+      font-style: italic;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 80px;
+      transform: translateX(-50%) translateY(0);
+      min-width: 180px;
+      max-width: 90%;
+      padding: 12px 16px;
+      background: rgba(15, 23, 42, 0.95);
+      color: #ffffff;
+      border-radius: 999px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+      font-size: 13px;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 50;
+    }
+
+    .toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-6px);
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 80;
+    }
+
+    .modal-overlay[hidden] {
+      display: none;
+    }
+
+    .modal-card {
+      width: min(100%, 420px);
+      background: var(--card-bg);
+      border-radius: 14px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      background: var(--primary-navy);
+      color: #ffffff;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      border: none;
+      background: transparent;
+      color: #ffffff;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .modal-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .modal-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    .modal-input.input-error {
+      border-color: var(--danger-red);
+      background: #fef2f2;
+    }
+
+    .modal-hint {
+      min-height: 1.1em;
+      font-size: 13px;
+      color: var(--danger-red);
+    }
+
+    .modal-submit {
+      background-color: var(--police-blue);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .modal-submit:active {
+      background-color: var(--police-blue-hover);
+    }
+
+    .text-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .text-list-item {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+      color: var(--text-dark);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    /* Centered & Max-size App Logo Container */
+    .app-logo-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px;
+      width: 100%;
+    }
+
+    .app-logo {
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    /* Image Viewer Lightbox Overlay (Zoomable) */
+    .lightbox-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .lightbox-overlay[hidden] {
+      display: none;
+    }
+
+    .lightbox-header {
+      width: 100%;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #ffffff;
+      background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+      z-index: 1010;
+    }
+
+    .lightbox-title {
+      font-size: 16px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 80%;
+    }
+
+    .lightbox-close {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #ffffff;
+      font-size: 24px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .lightbox-body {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .lightbox-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transform-origin: center center;
+      transition: transform 0.1s ease-out;
+      will-change: transform;
+    }
+
+    .lightbox-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 8px 16px;
+      border-radius: 30px;
+      backdrop-filter: blur(8px);
+      z-index: 1010;
+    }
+
+    .lightbox-btn {
+      background: none;
+      border: none;
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 700;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .lightbox-btn:active {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    @media (max-width: 540px) {
+      header {
+        padding: 12px 14px;
+      }
+
+      .header-title {
+        font-size: 15px;
+      }
+
+      .app-subtitle {
+        font-size: 9px;
+      }
+
+      .search-bar-container {
+        padding: 0 14px 10px;
+      }
+
+      .search-input {
+        font-size: 14px;
+        padding: 12px 14px;
+      }
+
+      .grid-container {
+        gap: 10px;
+        padding: 0 0 4px;
+      }
+
+      .btn {
+        padding: 14px 16px;
+        font-size: 14px;
+      }
+
+      .card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .card-value {
+        width: 100%;
+        text-align: right;
+        word-break: break-word;
+      }
+
+      .doc-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .btn-danger {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .bottom-bar {
+        padding: 10px 14px;
+      }
+
+      .btn-back {
+        font-size: 15px;
+        padding: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-title-container">
+      <span class="app-subtitle">Streifenhelfer</span>
+      <div class="header-title" id="page-title">Startseite</div>
+    </div>
+    <button class="search-toggle-btn" id="search-toggle" aria-label="Suche umschalten">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    </button>
+  </header>
+
+  <!-- Search Input Bar -->
+  <div class="search-bar-container" id="search-container">
+    <div class="search-bar-inner">
+      <input type="text" class="search-input" id="search-input" placeholder="Dienststelle oder Kennung suchen..." autocomplete="off">
+      <button class="search-clear-btn" id="search-clear" type="button" aria-label="Suche löschen">&times;</button>
+    </div>
+    <div class="search-meta" id="search-meta" aria-live="polite"></div>
+  </div>
+
+  <!-- Main Content -->
+  <main id="main-content">
+    <div class="grid-container" id="app-view"></div>
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <div class="bottom-bar" id="bottom-bar" style="display: none;">
+    <button class="btn-back" onclick="goBack()">
+      &#8592; Zurück
+    </button>
+  </div>
+
+  <div class="toast" id="toast" aria-live="polite"></div>
+
+  <!-- Password Modal -->
+  <div class="modal-overlay" id="password-modal" hidden aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="password-modal-title">
+      <div class="modal-header">
+        <div class="modal-title" id="password-modal-title">interne Abläufe I.Zug</div>
+        <button class="modal-close" id="password-modal-close" type="button" aria-label="Schließen">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label" for="password-input">Passwort</label>
+        <input class="modal-input" id="password-input" type="password" placeholder="Passwort eingeben" autocomplete="off">
+        <div class="modal-hint" id="password-hint" aria-live="polite"></div>
+        <button class="modal-submit" id="password-submit" type="button">Öffnen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zoomable Lightbox Modal -->
+  <div class="lightbox-overlay" id="lightbox" hidden aria-hidden="true">
+    <div class="lightbox-header">
+      <div class="lightbox-title" id="lightbox-title">Bildvorschau</div>
+      <button class="lightbox-close" id="lightbox-close" type="button" aria-label="Schließen">&times;</button>
+    </div>
+    <div class="lightbox-body" id="lightbox-body">
+      <img src="" alt="Vorschau" class="lightbox-img" id="lightbox-img">
+    </div>
+    <div class="lightbox-controls">
+      <button class="lightbox-btn" id="zoom-out" type="button" aria-label="Verkleinern">&minus;</button>
+      <button class="lightbox-btn" id="zoom-reset" type="button" aria-label="Zurücksetzen">&#215;</button>
+      <button class="lightbox-btn" id="zoom-in" type="button" aria-label="Vergrößern">&#43;</button>
+    </div>
+  </div>
+
+  <script>
+    // App Data Structure
+    const appTree = {
+      'home': {
+        title: 'Startseite',
+        type: 'buttons',
+        items: [
+          { label: 'Verkehrskontrolle', target: 'vk' },
+          { label: 'BePo', target: 'bepo' },
+          { label: 'Maßnahmen ESD', target: 'esd' },
+          { label: '76/10', target: 'internal_ablaeufe' }
+        ]
+      },
+
+      'internal_ablaeufe': {
+        title: '76/10',
+        type: 'buttons',
+        items: [
+          { label: 'Telefonnummer Gezi', val: '0511/8958 2600', card: true },
+          { label: 'Krankheit', target: 'internal_krankheit' },
+          { label: 'Fortbildung', target: 'internal_fortbildung' },
+          { label: 'Projekte', target: 'internal_projekte' },
+          { label: 'Einsatz', target: 'internal_einsatz' },
+          { label: 'Raumdienst', target: 'internal_raumdienst' },
+          { label: 'Urlaub', target: 'internal_urlaub' },
+          { label: 'FEM', target: 'internal_fem' },
+          { label: 'PW-Frühstück', target: 'internal_pw_fruehstueck' }
+        ]
+      },
+      'internal_telefonliste': {
+        title: 'Telefonliste',
+        type: 'buttons',
+        items: [
+          { label: 'HU intern', target: 'internal_hu_intern' },
+          { label: 'PA', target: 'internal_pa' },
+          { label: 'Leitstelle/PD/PI', target: 'internal_leitstelle' },
+          { label: 'Sonstige', target: 'internal_sonstige' }
+        ]
+      },
+      'internal_krankheit': {
+        title: 'Krankheit',
+        type: 'buttons',
+        items: [
+          { label: 'Krank vor dem Einsatz', target: 'internal_krankheit_einsatz' },
+          { label: 'Krank vor der Fortbildung', target: 'internal_krankheit_fortbildung' },
+          { label: 'Krank vor dem Projekt', target: 'internal_krankheit_projekt' },
+          { label: 'Krank im Urlaub', target: 'internal_krankheit_urlaub' },
+          { label: 'akut Krank', target: 'internal_krankheit_akut' }
+        ]
+      },
+      'internal_krankheit_einsatz': {
+        title: 'Krank vor dem Einsatz',
+        type: 'cards',
+        items: [
+          { label: 'Meldung bis spätestens 07:00 Uhr an Zugführung' },
+          { label: 'Meldung an ZuFü über Nimes (Nimes Konversation mit beiden ZuFü)' },
+          { label: 'Meldung an Truppführer' },
+          { label: 'Falls letzter in der Gliederung: Person über einem anschreiben, damit das Fahrzeug geholt wird' },
+          { label: 'Krankmeldung bis 07:30 Uhr:', val: 'Per Mail an Gezi/Per Telefon an Gezi (s. Telefonliste)' },
+          { label: 'Nach drei Tagen wird eine AU benötigt (einscannen und per Mail ans GeZi)'}
+        ]
+      },
+      'internal_krankheit_fortbildung': {
+        title: 'Krank vor der Fortbildung',
+        type: 'cards',
+        items: [
+          { label: 'Meldung bis spätestens 07:00 Uhr an Zugführung' },
+          { label: 'Krankmeldung an ZuFü über Nimes (Nimes Konversation mit beiden ZuFü)'},
+          { label: 'Meldung an Truppführer' },
+          { label: 'Krankmeldung bis 07:30 Uhr:', val: 'Per Mail an Gezi/Per Telefon an Gezi (s. Telefonliste)' },
+          { label: 'Nach drei Tagen wird eine AU benötigt (einscannen und per Mail ans GeZi)'}
+
+        ]
+      },
+      'internal_krankheit_projekt': {
+        title: 'Krank vor dem Projekt',
+        type: 'cards',
+        items: [
+        { label: 'Meldung bis spätestens 07:00 Uhr an Zugführung' },
+        { label: 'Krankmeldung an ZuFü über Nimes (Nimes Konversation mit beiden ZuFü)'}, 
+        { label: 'Meldung an Truppführer' },
+        { label: 'Falls letzter in der Gliederung: Person über einem anschreiben, damit das Fahrzeug geholt wird' },
+        { label: 'Krankmeldung bis 07:30 Uhr:', val: 'Per Mail an Gezi/Per Telefon an Gezi (s. Telefonliste)' },
+        { label: 'Nach drei Tagen wird eine AU benötigt (einscannen und per Mail ans GeZi)'},
+        { label: 'Projekt Fahndung: Nachricht in der WhatsApp Gruppe' }
+      ]
+      },
+      'internal_krankheit_urlaub': {
+        title: 'Krank im Urlaub',
+        type: 'cards',
+        items: [
+          { label: 'AU bereits ab dem ersten Tag' },
+        ]
+      },
+      'internal_krankheit_akut': {
+        title: 'akut Krank',
+        type: 'cards',
+        items: [{ label: 'Meldung an ZuFü/GruFü' },
+          {label: 'Buchung über das ZeusX Terminal'}
+        ]
+      },
+      'internal_fortbildung': {
+        title: 'Fortbildung',
+        type: 'cards',
+        items: [
+          { label: 'Fahrzeuge:', val: 'Zu Beginn der Fortbildungen sind die Fahrzeuge vorzuziehen und auf dem Parkplatz vor dem Gebäude abzuparken' },
+          { label: 'Vorträge:', val: 'Eine Vortragsliste findet ihr unter I_Zug-interne Fortbildung-Vorträge'},
+          { label: 'Vorträge:', val: 'Wenn ihr eigene Vorträge habt, ergänzt diese gerne selbstständig' }, 
+          { label: 'Zugkasse: 10€ peo Monat für Tee/Kaffee/PW-Frühstück'} 
+
+        ]
+      },
+      'internal_projekte': {
+        title: 'Projekte',
+        type: 'buttons',
+        items: [
+          { label: 'Projekt Brake', target: 'internal_projekt_brake' },
+          { label: 'Projekt KiPo', target: 'internal_projekt_kipo' },
+          { label: 'Projekt Fahndung', target: 'internal_projekt_fahndung' }
+        ]
+      },
+      'internal_projekt_brake': {
+        title: 'Projekt Brake',
+        type: 'cards',
+        items: [
+          { label: 'Projekte dürfen nur unter 60 Stunden gefahren werden!', note: true },
+          { label: 'Meldung der Projekte innerhalb der Gruppe bis Dienstag 18:00 Uhr' },
+          { label: 'Gliederung ist bei Nimes im Ordner Projekte/I.Zug zu finden' },
+          { label: 'Dienstanzug ist grundsätzlich der Einsatzanzug (Ausnahme: Unterstützung KED)' },
+          { label: 'Grundsätzlich sind SK4 Platte und Helm mitzuführen' },
+          { label: 'Bei Arbeiten in Uniform ist zusätzlich KSA mitzuführen' },
+          { label: 'Fahrzeuge für den Dienst vor Ort werden vom PK Brake gestellt' },
+          { label: 'Zivile Holster sind im Funkschrank, unten in einer Kiste zu finden:', val: 'Einzutragen in der Ausgabeliste auf dem Tisch' },
+          { label: 'MPs werden grundsätzlich aufgerüstet und im Fahrzeug mitgeführt' }
+        ]
+      },
+      'internal_projekt_kipo': {
+        title: 'Projekt KiPo',
+        type: 'cards',
+        items: [
+          { label: 'Projekte dürfen nur unter 60 Stunden gefahren werden!', note: true },
+          { label: 'Meldung der Projekte innerhalb der Gruppe bis Dienstag 18:00 Uhr' },
+          { label: 'Das Projekt findet grundsätzlich zivil statt' },
+          { label: 'Zivile Holster sind im Funkschrank, unten in einer Kiste zu finden:', val: 'Einzutragen in der Ausgabeliste auf dem Tisch' },
+          { label: 'Grundsätzlich sind SK4 Platte und Helm mitzuführen' },
+          { label: 'MPs werden grundsätzlich aufgerüstet und im Fahrzeug mitgeführt' },
+          { label: 'Funkgeräte sind ausreichend mitzuführen:', val: 'Einzutragen in der Ausgabeliste auf dem Tisch' },
+          { label: 'In Leer ist der Schlüssel für den Auswerteraum an der Wache abzuholen und nach Dienstende wieder zu hinterlegen' },
+          { label: 'Es gibt eine Excel-Datei in der ihr den aktuellen Stand der Auswertung findet:', val: 'grün = ausgewertet/abgeschlossen gelb = durch uns abgeschlossen/ Hinweis an SB über fehlende Daten rot = noch auszuwerten' },
+          { label: 'Wenn ihr Vorgänge abschließt immer eine Mail an SB / gleichermaßen bei beschädigten oder fehlenden Dateien' },
+          { label: 'Immer mit den möglichst alten Vorgängen anfangen' }
+        ]
+      },
+      'internal_projekt_fahndung': {
+        title: 'Projekt Fahndung',
+        type: 'cards',
+        items: [
+          { label: 'Projekte dürfen nur unter 60 Stunden gefahren werden!', note: true },
+          { label: 'Meldung der Projekte innerhalb der Gruppe bis Dienstag 18:00 Uhr' },
+          { label: 'Das Projekt findet grundsätzlich zivil statt' },
+          { label: 'Zivile Holster sind im Funkschrank, unten in einer Kiste zu finden:', val: 'Einzutragen in der Ausgabeliste auf dem Tisch' },
+          { label: 'Grundsätzlich sind SK4 Platte und Helm mitzuführen' },
+          { label: 'MPs werden grundsätzlich aufgerüstet und im Fahrzeug mitgeführt' },
+          { label: 'Funkgeräte sind ausreichend mitzuführen:', val: 'Einzutragen in der Ausgabeliste auf dem Tisch' }
+        ]
+      },
+      'internal_einsatz': {
+        title: 'Einsatz',
+        type: 'buttons',
+        items: [
+          { label: 'Vor dem Einsatz', target: 'internal_einsatz_vor' },
+          { label: 'Nach dem Einsatz', target: 'internal_einsatz_nach' }
+        ]
+      },
+      'internal_einsatz_vor': {
+        title: 'Vor dem Einsatz',
+        type: 'checklist',
+        items: [
+          { label: 'Der letztgenannte pro Trupp in der Gliederung zieht für den Einsatz das Fahrzeug vor' },
+          { label: 'Die Fahrzeuge werden bis 10min vor DB in taktischer Reihenfolge vor dem Geb. 8 vor dem nördlichen Seiteneingang abgestellt' },
+          { label: 'Fahrer 10 packt vor dem Einsatz die Funktaschen' },
+          { label: 'Alle anderen holen die Funktasche' },
+          { label: 'Nach der Besprechung werden MPs aufgerüstet (Fahrer ist ausgenommen)' },
+          { label: 'Im Auto werden vor dem Einsatz die Rücken- und Helmkletts bereits an die Decke geklettet' },
+          { label: 'In KVV Einsätzen werden zusätzlich die KVV-Kisten hinten links aus dem KSA Raum mitgenommen' },
+          { label: 'Feuerlöscher für Einsätze stehen mittig links im KSA Raum' }
+        ]
+      },
+      'internal_einsatz_nach': {
+        title: 'Nach dem Einsatz',
+        type: 'checklist',
+        items: [
+          { label: 'Funktaschen werden vor Ankunft auf Vollständigkeit überprüft und anschließend vor den KSA Raum gestellt' },
+          { label: 'Alle Funkgeräte müssen vor Einsatzende wieder auf den Kanal 6.BPH (KW:1757) zurückgesetzt werden '},
+          { label: 'MPs werden zurück in die Waffenkammer gebracht und auf die Annahme gewartet' },
+          { label: 'In KVV-Einsätzen wird die KVV-Kiste wieder abgerüstet und zurück gebracht' },
+          { label: 'Feuerlöscher werden wieder mittig links im KSA Raum zurückgestellt' },
+          { label: 'Die Kaffeethermen der Küche müssen ausgeleert/gespült, vorne auf dem Tisch beim Zeus Terminal abgestellt werden '},
+          { label: 'Sobald per WhatsApp die Meldung "FEM vollständig" kommt, kann sich umgezogen und ausgezeust werden' }
+        ]
+      },
+      'internal_urlaub': {
+        title: 'Urlaub',
+        type: 'cards',
+        items: [
+          { label: 'Die aktuelle Urlaubsqoute beträgt 7' },
+          { label: 'Urlaube sind spätestens zwei Wochen vor Antritt auf Zeus X zu beantragen' }
+        ]
+      },
+      'internal_fem': {
+        title: 'FEM',
+        type: 'cards',
+        items: [
+          { label: 'Beschädigungen:', val: 'Beschädigungen an HU FEM sind grundsätzlich vorher mit dem FEM Verantwortlichen des Zuges zu klären' },
+          { label: 'FEM ist im Lagerraum I.Zug (Raum 32) zu finden' },
+          { label: 'Schlüssel im Schlüsselkasten vor dem Raum' }
+        ]
+      },
+      'internal_pw_fruehstueck': {
+        title: 'PW-Frühstück',
+        type: 'vev_guide',
+        items: [
+          {
+            title: 'Brötchen',
+            points: [
+              '2 Brötchen pro Person',
+              'Hauptsächlich Körnerbrötchen'
+            ]
+          },
+          {
+            title: 'Bartsch',
+            points: [
+              'Kräutermett & Zwiebeln (ca. 0,6kg pro 30 Personen)',
+              '5 große Packungen Kräuterfleischsalat (für ca. 30 Personen)',
+              '2 kleine vegetarische Packungen Fleischsalat'
+            ]
+          },
+          {
+            title: 'Einkauf',
+            points: [
+              'Aufschnitt: max. 2 Packungen, 1x veganer Aufschnitt, 3 Packungen Käse',
+              'Aufstrich: Kühlschränke auf Butter/Margarine checken, 1x Kräuterfrischkäse',
+              'Vegan: Humus in verschiedenen Varianten (gerne NOA)',
+              'Eier: 1,5 Stück pro Person (Freilandhaltung)',
+              'Saft: verschiedene Säfte, überwiegend Multi',
+              'Gemüse: 2x Gurken, 4x Paprika, 500g kleine Tomaten'
+            ]
+          }
+        ]
+      },
+      'internal_raumdienst': {
+        title: 'Raumdienst',
+        type: 'table_cards',
+        tableRows: [
+          ['August', 'September', 'Oktober', 'November', 'Dezember', 'Januar', 'Februar', 'März'],
+          ['12', '13', '14', '12', '13', '14', '12', '13']
+        ],
+        tableNote: 'Grundsätzlich ist der jeweilige Trupp für den Raumdienst zuständig. Allgemeine Arbeiten bzgl. der Sauberkeit (Spülmaschine ausräumen/Müll rausbringen etc.) können aber von jedem übernommen werden!',
+        items: [
+          { label: 'Müll:', val: 'täglich im Dienst die Mülleimer kontrollieren und bei Bedarf ausleeren' },
+          { label: 'Spülmaschine:', val: 'Vor dem Dienst die Spülmaschine ausräumen' },
+          { label: 'Einkauf:', val: 'mindestens 1x im Monat sind die Vorräte zu kontrollieren und bei Bedarf aufzufüllen (Rechnungen der Einkäufe per WhatsApp an Web)' },
+          { label: 'Tische:', val: 'Nach Dienstende die Tische und die Küchenzeile mit einem nassen Lappen abwischen' },
+          { label: 'Kaffeethermen:', val: 'min. 1x im Monat sind die Kaffeethermen mit einem Spültab und Wasser über Nacht zu reinigen'},
+          { label: 'Einsatzpfand:', val: 'zur Küche bringen und neue Kisten holen'}
+        ]
+      },
+
+      'erste_hilfe': {
+        title: 'Erste Hilfe',
+        type: 'buttons',
+        items: [
+          { label: 'xABCDE-Schema', target: 'erste_hilfe_abcde' },
+          { label: 'Blood-Sweep/Initial', target: 'erste_hilfe_blood' },
+          { label: 'Body-Check', target: 'erste_hilfe_body' },
+          { label: 'Reanimation', target: 'erste_hilfe_reanimation' },
+          { label: 'Standard-Maßnahmen', target: 'erste_hilfe_standard' }
+        ]
+      },
+      'erste_hilfe_abcde': {
+        title: 'xABCDE-Schema',
+        type: 'cards',
+        items: [{ label: 'Bitte die relevanten Schritte des xABCDE-Schemas beachten.' }]
+      },
+      'erste_hilfe_blood': {
+        title: 'Blood-Sweep/Initial',
+        type: 'cards',
+        items: [{ label: 'Bitte den Initial-Check und Blood-Sweep nach dem jeweiligen Schema durchführen.' }]
+      },
+      'erste_hilfe_body': {
+        title: 'Body-Check',
+        type: 'cards',
+        items: [{ label: 'Bitte den Body-Check sorgfältig durchführen und dokumentieren.' }]
+      },
+      'erste_hilfe_reanimation': {
+        title: 'Reanimation',
+        type: 'cards',
+        items: [{ label: 'Bitte die Reanimations-Schritte nach dem aktuellen Standardverfahren befolgen.' }]
+      },
+      'erste_hilfe_standard': {
+        title: 'Standard-Maßnahmen',
+        type: 'buttons',
+        items: [
+          { label: 'Beatmung', target: 'erste_hilfe_beatmung' },
+          { label: 'Stabile Seitenlage', target: 'erste_hilfe_seitenlage' },        ]
+      },
+
+      'bepo': {
+        title: 'BePo',
+        type: 'buttons',
+        items: [
+          { label: 'Bereitschaftspolizei (Funk)', target: 'bepo_funk' },
+          { label: 'KB Ausfüllhilfe', target: 'kb_ausfuellhilfe' }
+        ]
+      },
+
+      // --- VERKEHRSKONTROLLE ---
+      'vk': {
+        title: 'Verkehrskontrolle',
+        type: 'buttons',
+        items: [
+          { label: 'Liste gebräuchlicher Tatbestände', pdf: 'tatbestand.pdf' },
+          { label: 'PKW', target: 'vk_pkw' },
+          { label: 'LKW', target: 'vk_lkw' },
+          { label: 'Motorrad', target: 'vk_motorrad' },
+          { label: 'Ausländische Fahrerlaubnis', target: 'vk_ausland' },
+          { label: 'E-Scooter', target: 'vk_escooter' },
+          { label: 'Fahrrad', target: 'vk_fahrrad' },
+          { label: 'Tuning', img: 'tuning.png' },
+          { label: 'Laserhilfe', img: 'laser.png' }
+        ]
+      },
+      'vk_pkw': {
+        title: 'PKW',
+        type: 'buttons',
+        items: [
+          { label: 'Technische Kontrolle', target: 'pkw_tech' },
+          { label: 'Dokumentenkontrolle', target: 'pkw_doku' },
+          { label: 'Alkohol/Drogen', target: 'pkw_alk' },
+          { label: 'häufige OWIs', target: 'pkw_owi' },
+          { label: 'TÜV', target: 'pkw_tuev' }
+        ]
+      },
+      'pkw_tech': {
+        title: 'Technische Kontrolle (PKW)',
+        type: 'cards',
+        items: [
+          { label: 'Profiltiefe min. 1,6 mm', val: '(336606) 60€ 1 Pkt.' },
+          { label: 'Licht defekt / nicht vorhanden', val: '(123136) 20€' },
+          { label: 'Ladungssicherung mangelhaft', val: '(122100) 35€' },
+          { label: 'TÜV abgelaufen bis 2 Monate', val: '(312401) 15€' },
+          { label: 'TÜV abgelaufen 2-4 Monate', val: '(312402) 25€' },
+          { label: 'TÜV abgelaufen 4-8 Monate', val: '(312403) 60€ 1 Pkt.' },
+          { label: 'TÜV abgelaufen über 8 Monate', val: '(312404) 75€ 1 Pkt.' }
+        ]
+      },
+      'pkw_doku': {
+        title: 'Dokumentenkontrolle (PKW)',
+        type: 'doc_buttons',
+        items: [
+          { label: 'Führerschein', target: 'fs_fehlt' },
+          { label: 'Fahrzeugschein', target: 'fzs_fehlt' }
+        ]
+      },
+      'pkw_owi': {
+        title: 'häufige OWIs (PKW)',
+        type: 'cards',
+        items: [
+          { label: 'Handy verwendet', val: '(123624) 100€ 1 Punkt' },
+          { label: 'nicht angeschnallt', val: '(121172) 30€' },
+          { label: 'fehlende Ladungssicherung', val: '(122100) 35€' },
+          { label: 'Haltegebot nicht befolgt', val: '(136606) 70€ 1 Punkt' },
+          { label: 'Erste-Hilfe Material nicht mitgeführt', val: '(335124) 5€' },
+          { label: 'Warnweste nicht mitgeführt', val: '(353000) 15€' },
+          { label: 'Warndreieck nicht mitgeführt', val: '(353106) 15€' }
+        ]
+      },
+      'pkw_alk': {
+        title: 'Alkohol/Drogen',
+        type: 'buttons',
+        items: [
+          { label: 'Alkohol', target: 'pkw_alk_alcohol' },
+          { label: 'Drogen', target: 'pkw_alk_drugs' }
+        ]
+      },
+      'pkw_alk_alcohol': {
+        title: 'Alkohol',
+        type: 'cards',
+        items: [
+          { label: '0,5-1,09 Promille (ohne Ausfallerscheinungen)', val: '(424618) 500€ 2 Punkte 1 Monat Fahrverbot (bei erster Eintragung)/ Test mit Dräger Evidential' },
+          { label: '1,1 und mehr Promille (ohne Ausfallerscheinungen)', val: 'Straftat gem. § 316 StGB/ Blutentnahme' },
+          { label: '0,3 und mehr Promille (mit Ausfallerscheinungen)', val: 'Straftat gem. § 316/§315c StGB/ Blutentnahme' },
+          { label: 'Vor Vollendung des 21. Lebensjahres die Fahrt unter Wirkung eines alkoholischen Getränks angetreten', val: '(424672) 250€ 1 Punkt' },
+          { label: 'In der Probezeit unter der Wirkung eines alkoholischen Getränks die Fahrt angetreten', val: '(424660) 250€ 1 Punkt' }
+        ]
+      },
+      'pkw_alk_drugs': {
+        title: 'Drogen',
+        type: 'cards',
+        items: [
+          { label: 'Fahren unter Einfluss von THC', val: '(424630) 500€ 2 Punkte 1 Monat Fahrverbot' },
+          { label: 'Fahren unter Wirkung eines berauschenden Mittels', val: '(424648) 500€ 2 Punkte 1 Monat Fahrverbot' },
+          { label: 'Vor Vollendung des 21. Lebensjahres die Fahrt unter Wirkung von THC angetreten', val: '(424668) 250€ 1 Punkt' },
+          { label: 'In der Probezeit unter der Wirkung eines alkoholischen Getränks die Fahrt angetreten', val: '(424661) 250€ 1 Punkt' }
+        ]
+      },
+      'pkw_tuev': {
+        title: 'TÜV',
+        type: 'cards',
+        items: [
+          { label: '2025', val: 'Orange', color: '#f97316' },
+          { label: '2026', val: 'Blau', color: '#2563eb' },
+          { label: '2027', val: 'Gelb', color: '#facc15' },
+          { label: '2028', val: 'Braun', color: '#92400e' },
+          { label: '2029', val: 'Rosa', color: '#ec4899' },
+          { label: '2030', val: 'Grün', color: '#22c55e' },
+          { label: '2031', val: 'Orange', color: '#f97316' },
+          { label: '2032', val: 'Blau', color: '#2563eb' },
+          { label: '2033', val: 'Gelb', color: '#facc15' },
+          { label: '2034', val: 'Braun', color: '#92400e' },
+          { label: '2035', val: 'Rosa', color: '#ec4899' }
+        ]
+      },
+      'fs_fehlt': {
+        title: 'Führerschein - Fehlt',
+        type: 'cards',
+        items: [
+          { label: 'Nicht mitgeführt', val: '(204100) 10€' },
+          { label: 'Nicht ausgehändigt', val: '(204106) 10€' }
+        ]
+      },
+      'fzs_fehlt': {
+        title: 'Fahrzeugschein - Fehlt',
+        type: 'cards',
+        items: [
+          { label: 'Nicht mitgeführt', val: '(813124) 10€' },
+          { label: 'Nicht ausgehändigt', val: '(813130) 10€' }
+        ]
+      },
+      'vk_lkw': {
+        title: 'LKW',
+        type: 'buttons',
+        items: [
+          { label: 'Technische Kontrolle', target: 'lkw_tech' },
+          { label: 'Dokumentenkontrolle', target: 'lkw_doku' },
+          { label: 'Lenk- und Ruhezeiten', target: 'lkw_lenk' },
+          { label: 'Ladungssicherung', target: 'lkw_ladung' },
+          { label: 'Gefahrgut (Kemler-Zahlen)', target: 'lkw_kemler' }
+        ]
+      },
+      'lkw_kemler': {
+        title: 'Gefahrgut (Kemler-Zahlen)',
+        type: 'cards',
+        hasSearch: true,
+        items: [
+          { label: 'Kemler 1', val: 'Explosivstoffe (z. B. Sprengstoffe)' },
+          { label: 'Kemler 2', val: 'Gase (z. B. Druckgas, leicht entzündliche Gase)' },
+          { label: 'Kemler 3', val: 'Entzündbare Flüssigkeiten (z. B. Benzin, Diesel, Alkohol)' },
+          { label: 'Kemler 4', val: 'Entzündbare Feststoffe / selbstentzündliche Stoffe' },
+          { label: 'Kemler 5', val: 'Oxidationsmittel (z. B. Chlorate, Peroxide)' },
+          { label: 'Kemler 6', val: 'Giftige Stoffe (z. B. Chlor, Ammoniak, Cyanide)' },
+          { label: 'Kemler 7', val: 'Radioaktive Stoffe' },
+          { label: 'Kemler 8', val: 'Ätzende Stoffe (z. B. Säuren, Laugen)' },
+          { label: 'Kemler 9', val: 'Sonstige besondere Gefahr (z. B. wassergefährdende Stoffe)' }
+        ]
+      },
+      'vk_escooter': {
+        title: 'E-Scooter',
+        type: 'cards',
+        items: [
+          { label: 'Rotlichtverstoß (unter 1 Sek.)', val: '(137612) 60€ 1 Punkt' },
+          { label: 'Rotlichtverstoß (über 1 Sek.)', val: '(137624) 100€ 1 Punkt' },
+          { label: 'ohne gültige Versicherungsplakette auf einer öffentlichen Straße', val: '(602118) 40€ (Prüfe Verstoß PflVersG!)' },
+          { label: 'zu zweit auf dem E-Scooter', val: '(608000) 10€' },
+          { label: 'Handy auf dem E-Scooter', val: '(123624) 100€ 1 Punkt' }
+        ]
+      },
+      'lkw_tech': {
+        title: 'Technische Kontrolle (LKW)',
+        type: 'cards',
+        items: [
+          { label: 'Profiltiefe min. 1,6mm', val: '(336606) 60€ 1 Punkt/ normaler LKW' },
+          { label: 'Profiltiefe min. 1,6mm', val: '(336612) 90€ 1 Punkt/ Gefahrgut LKW' },
+          { label: 'Licht defekt/ nicht vorhanden', val: '(123136) 20€' }
+        ]
+      },
+      'lkw_doku': {
+        title: 'Dokumentenkontrolle (LKW)',
+        type: 'doc_buttons',
+        items: [
+          { label: 'Führerschein', target: 'fs_fehlt' },
+          { label: 'Fahrzeugschein', target: 'fzs_fehlt' }
+        ]
+      },
+      'lkw_ladung': {
+        title: 'Ladungssicherung (LKW)',
+        type: 'cards',
+        items: [
+          { label: 'Ladungssicherung mangelhaft/nicht vorhanden', val: '(122600) 60€ 1 Punkt' },
+          { label: 'Hinweis', val: 'Die Ladung ist so zu verstauen und zu sichern, dass sie selbst bei Vollbremsung oder plötzlichen Ausweichbewegungen nicht: verrutschen, umfallen, hin- und herrollen, herabfallen oder vermeidbaren Lärm erzeugen' }
+        ]
+      },
+      'lkw_lenk': {
+        title: 'Lenk- und Ruhezeiten (LKW)',
+        type: 'cards',
+        items: [
+          { label: 'Tägliche Lenkzeit', val: 'max. 9 Stunden pro Tag (bis zu 10, zweimal pro KW)' },
+          { label: 'Fahrtunterbrechung', val: 'Spätestens nach 4,5 Stunden - Pause von min. 45 min' },
+          { label: 'Tägliche Ruhezeit (innerhalb 24h)', val: 'mindestens 11 zusammenhängende Stunden' },
+          { label: 'Verstöße laufen über das BALM (FPersG)', val: 'zu jeweiligen Katalognummern' }
+        ]
+      },
+      'vk_motorrad': {
+        title: 'Motorrad',
+        type: 'buttons',
+        items: [
+          { label: 'Technische Kontrolle', target: 'moto_tech' },
+          { label: 'Dokumentenkontrolle', target: 'moto_doku' },
+          { label: 'Ausrüstung', target: 'moto_ausr' }
+        ]
+      },
+      'vk_ausland': {
+        title: 'Ausländische Fahrerlaubnis',
+        type: 'buttons',
+        items: [
+          { label: 'EU-Fahrerlaubnis', target: 'fe_eu' },
+          { label: 'Nicht EU-Fahrerlaubnis', target: 'fe_non_eu' }
+        ]
+      },
+      'vk_fahrrad': {
+        title: 'Fahrrad',
+        type: 'cards',
+        items: [
+          { label: 'ohne Licht gefahren', val: '(117103) 15€' },
+          { label: 'kein Licht am Fahrrad vorhanden', val: '(367100) 20€' },
+          { label: 'freihändig gefahren', val: '(123006) 5€' },
+          { label: 'Gehör durch Geräte beeinträchtigt', val: '(123106) 10€' },
+          { label: 'Handy benutzt', val: '(123172) 55€' },
+          { label: 'Rotlicht missachtet unter 1 Sek.', val: '(137612) 60€ 1 Punkt' },
+          { label: 'Rotlicht missachtet über 1 Sek.', val: '(137624) 100€ 1 Punkt' },
+          { label: 'Fahrrad ohne Klingel geführt', val: '(364100) 15€' },
+          { label: 'Fahrrad ohne funktionstüchtige Bremsen geführt', val: '(365000) 10€' }
+        ]
+      },
+      'moto_tech': {
+        title: 'Technische Kontrolle (Motorrad)',
+        type: 'cards',
+        items: [
+          { label: 'Krad am Tag ohne Licht geführt', val: '(117136) 10€' }
+        ]
+      },
+      'moto_doku': {
+        title: 'Dokumentenkontrolle (Motorrad)',
+        type: 'doc_buttons',
+        items: [
+          { label: 'Führerschein', target: 'fs_fehlt' },
+          { label: 'Fahrzeugschein', target: 'fzs_fehlt' },
+          { label: 'Mofa Prüfbescheinigung', target: 'mofa_fehlt' }
+        ]
+      },
+      'moto_ausr': {
+        title: 'Ausrüstung (Motorrad)',
+        type: 'cards',
+        items: [
+          { label: 'Helm nicht getragen', val: '(121178) 15€' }
+        ]
+      },
+      'fe_eu': {
+        title: 'EU-Fahrerlaubnis',
+        type: 'cards',
+        items: [
+          { label: 'Hinweis', val: 'EU Fahrerlaubnisse sind entsprechend den gesetzlichen Bestimmungen als gleichwertig zu deutschen Fahrerlaubnissen zu sehen.' }
+        ]
+      },
+      'fe_non_eu': {
+        title: 'Nicht EU-Fahrerlaubnis',
+        type: 'cards',
+        items: [
+          { label: 'Gültigkeit nach Wohnsitzmeldung', val: 'Ab Gründung eines ordentlichen Wohnsitzes in Deutschland ist die nicht EU-FE noch 6 Monate gültig. (Die Frist kann in Ausnahmefällen auf 12 Monate verlängert werden)' },
+          { label: 'Nationaler Führerschein', val: 'Der nationale Führerschein muss zwingend vorliegen.' },
+          { label: 'Internationale Übersetzung', val: 'Zusätzlich ist ein internationaler Führerschein ODER eine amtliche Übersetzung notwendig.' }
+        ]
+      },
+      'esd': {
+        title: 'Maßnahmen ESD',
+        type: 'buttons',
+        items: [
+          { label: 'Sipro', target: 'esd_sipro' },
+          { label: 'Blutentnahme', target: 'esd_blutentnahme' },
+          { label: 'Belehrung/Merkblatt StP2', url: 'https://qrdoc.innovation-hub-niedersachsen.de/' },
+          { label: 'VEV-Digital', target: 'esd_vev' }
+
+        ]
+      },
+      'esd_vev': {
+        title: 'VEV-Digital',
+        type: 'vev_guide',
+        items: [
+          {
+            title: '1. Anlegen eines VU\'s',
+            points: [
+              'Gehe unter Verkehr auf VEV-Unfallaufnahme',
+              'Klicke unten rechts auf neuer VU',
+              'Es öffnet sich nun eine Übersicht mit auszufüllenden Reitern (Gesch. und Zeugen sind optional, falls vorhanden)'
+            ]
+          },
+          {
+            title: '2. Grunddaten',
+            points: [
+              'Unfallort per Klick in der Karte markieren',
+              'Warten bis sich das Fenster öffnet und dann auf den Straßennamen klicken',
+              'Freitextliche Erfassung ist grundsätzlich auch möglich',
+              'Die zuständige Dienststelle sollte automatisch erkannt werden, bitte überprüfen',
+              'Achtung: Sofern eine Ahndung vorgesehen ist, das Feld Verfolgungsbehörde per Katalogauswahl ausfüllen'
+            ]
+          },
+          {
+            title: '3. Aufnehmende Beamte',
+            points: [
+              'Zunächst unten auf das Feld klicken',
+              'Den Namen des Kollegen/Kollegin eintragen',
+              'Der Kollege kann nun auch im gleichen VEV arbeiten'
+            ]
+          },
+          {
+            title: '4. Hergang',
+            points: [
+              'kurze Beschreibung des Unfallhergangs',
+              'Unfalltyp: 3x in den Katalog klicken, um den Unfalltyp endgültig auszuwählen (Hinweis: Er wird für die Bet. auf dem VEV nicht angezeigt, reine Statistik für NIVADIS)',
+              'Unfallskizze ist notwendig: Hierzu freihändig skizzieren und Fahrzeuge über das Fz.Symbol mit dem Plus hinzufügen.'
+            ]
+          },
+          {
+            title: '5. Beteiligte',
+            points: [
+              'Schieberegler deutsches oder EU-Kennzeichen',
+              'Automatisierte Halterabfrage über das Fz. mit der Lupe möglich',
+              'Im Feld Adresse wird bei Eingabe ein Katalog geöffnet: Wichtig ist, dass die Adresse in dem Katalog angeklickt wird',
+              'Bei unbekannter Adresse muss diese trotzdem im Auswahlfeld im Katalog angeklickt werden',
+              'Bei Halter ist eine Eintragung einer E-Mail Adresse möglich. Dann erhält der Halter auch eine VEV-Durchschrift per Mail',
+              'Es besteht die Möglichkeit das VEV in andere Sprachen übersetzen zu lassen. Hierzu die betreffende Sprache im Feld Beteiligter auswählen',
+              'Nur bei Ahndung DEB und vorhandener Verfolgungsbehörde erfolgt eine automatisierte Übermittlung',
+              'Tatbestandsnummern können per Zahlen oder Wortauswahl herausgesucht werden',
+              'Sobald der Bet. unterschrieben hat wird das Feld gesperrt. Änderungen sind nur möglich, wenn die Unterschrift gelöscht wird.'
+            ]
+          },
+          {
+            title: '6. Geschädigte',
+            points: [
+              'Geschädigte können manuell eingetragen werden',
+              'Bei Beschädigungen von Schildern oder Straßenteilen sind Straßenmeistereien einzutragen. Hierzu die unterste Zeile anklicken und zuständige Meisterei auswählen',
+              'Wenn eine Straßenmeisterei ausgewählt ist, braucht keine freitextliche Personalie mehr eingetragen werden',
+              'Beschreibung des Schadens ist hier jedoch zwingend erforderlich!'
+            ]
+          },
+          {
+            title: '7. Übersicht',
+            points: [
+              'Es sollten nun alle Felder grün sein',
+              'Bei roten Feldern, sind dort noch Fehler, die nachgebessert werden müssen',
+              'Über den Seiten Aktions Kopf (der blaue Button mit den vier Quadraten) lassen sich bestimmte Aktionen durchführen',
+              'Im Menü Übersicht lässt sich ein QR-Code generieren und die VU Grunddaten anzeigen',
+              'Sobald alles grün ist, VEV über den Knopf Vorgang abgeben, versenden'
+            ]
+          },
+          {
+            title: '8. Häufige Fehler',
+            points: [
+              'Obwohl sämtliche Daten eingetragen sind, ist das Feld immer noch rot: Feld erneut in Bearbeitung nehmen und erneut speichern',
+              'Neubaugebiet: PAPI erkennt keine neuen Straßennamen. Für Nivadis sind die Koordinaten relevant. Hierzu das Feld Örtlichkeit (Freitext) mit der Adresse beschriften',
+              'Parkplatzunfall: (ein Bet. nicht vor Ort) Hier bietet es sich an das Häkchen bei kein Beteiligter vor Ort zu setzen. Sofern eine E-Mail bekannt ist kann diese beim Halter eingetragen werden. Falls eine Notiz am Fz. hinterlassen wird, die VNr. draufschreiben. Damit kann der Bet. in der Dienststelle die Unfallanzeige bekommen.'
+            ]
+          }
+        ]
+      },
+      'esd_sipro': {
+        title: 'Sipro',
+        type: 'buttons',
+        items: [
+          { label: 'Sipro Teil A', img: 'siproa.png' },
+          { label: 'Sipro Teil B', img: 'siprob.png' }
+        ]
+      },
+      'esd_blutentnahme': {
+        title: 'Blutentnahme',
+        type: 'cards',
+        items: [
+          { label: 'Schritt 1', val: 'Blutentnahme als Maßnahme erfassen' },
+          { label: 'Schritt 2', val: 'Blutprobe anlegen' },
+          { label: 'Schritt 3', val: 'Untersuchungsantrag anlegen' },
+          { label: 'Schritt 4', val: 'Asservat hinzufügen' },
+          { label: 'Schritt 5', val: 'Untersuchungsstelle hinzufügen' },
+          { label: 'Schritt 6', val: 'Person hinzufügen' },
+          { label: 'Schritt 7', val: 'Untersuchung bearbeiten' },
+          { label: 'Schritt 8', val: 'QS-Freigabe' }
+        ]
+      },
+      'mofa_fehlt': {
+        title: 'Mofa Prüfbescheinigung - Fehlt',
+        type: 'cards',
+        items: [
+          { label: 'nicht mitgeführt', val: '(205100) 10€' },
+          { label: 'nicht ausgehändigt', val: '(205106) 10€' }
+        ]
+      },
+      
+      // Die Punkte 'Tarnschieber', 'Funkrufnamen' und alle explizit davon abgeleiteten
+      // Seiten (Sonderdienststellen, PD Oldenburg, PD Osnabrück etc.) wurden weisungsgemäß entfernt.
+
+      'bepo_funk': {
+        title: 'Bereitschaftspolizei',
+        type: 'bepo_special',
+        items: [
+          { label: '1. BPH (Hannover)', val: 'Eiche 71' },
+          { label: '2. BPH (Hannover)', val: 'Eiche 72' },
+          { label: '3. BPH (Braunschweig)', val: 'Eiche 73' },
+          { label: '4. BPH (Lüneburg)', val: 'Eiche 74' },
+          { label: '5. BPH (Göttingen)', val: 'Eiche 75' },
+          { label: '6. BPH (Oldenburg)', val: 'Eiche 76' },
+          { label: '7. BPH (Osnabrück)', val: 'Eiche 77' }
+        ],
+        extraButton: { label: 'EHU (Leo Leine)', target: 'ehu_leo_leine' }
+      },
+
+      'kb_ausfuellhilfe': {
+        title: 'KB Ausfüllhilfe',
+        type: 'buttons',
+        items: [
+          { label: '1. Einstiegsmaßnahme', img: 'bild1.png' },
+          { label: 'Ort/ Beamte etc.', img: 'bild2.png' },
+          { label: '2. Polizeilicher Anlass', img: 'bild3.png' },
+          { label: '3. Beschuldigter', img: 'bild4.png' },
+          { label: '4. Sachverhalt ', img: 'bild5.png' },
+          { label: '5. Zeugen/Geschädigte etc.', img: 'bild6.png' },
+          { label: '6. Eingriffsmaßnahmen', img: 'bild7.png' },
+          { label: 'Unterschrift', img: 'bild8.png' },
+          { label: '7. Verbleib Personen/Sachen', img: 'bild9.png' },
+          { label: '8. Sicherstellung/Beschlagnahme', img: 'bild10.png' },
+          { label: '9. Verbleib der in Punkt 8 genannten Gegenstände', img: 'bild11.png' }
+        ]
+      },
+      
+      'ehu_leo_leine': {
+        title: 'Leo Leine (EHU)',
+        type: 'cards',
+        hasSearch: true,
+        items: [
+          { label: 'Hannover', val: 'Leine Ihme (10er)' },
+          { label: 'Göttingen', val: 'Leine Anton (20er)' },
+          { label: 'Braunschweig', val: 'Leine Berta (30er)' },
+          { label: 'Oldenburg', val: 'Leine Cäsar (40er)' },
+          { label: 'Lüneburg', val: 'Leine Dora (50er)' },
+          { label: 'Osnabrück', val: 'Leine Friedrich (60er)' },
+          { label: 'Reiterzug Niedersachsen', val: 'Leine (80er)' }
+        ]
+      }
+    };
+
+    // === Logic & Renderer ===
+    
+    let historyStack = ['home'];
+
+    function renderPage(pageId) {
+      const page = appTree[pageId];
+      if (!page) return;
+
+      document.getElementById('page-title').innerText = page.title;
+      const container = document.getElementById('app-view');
+      container.innerHTML = '';
+
+      // Back Button aus- oder einblenden
+      document.getElementById('bottom-bar').style.display = historyStack.length > 1 ? 'flex' : 'none';
+
+      // Spezielle Tabellen Ansicht rendern
+      if (page.tableRows) {
+        const tableSec = document.createElement('div');
+        tableSec.className = 'table-section';
+        let tableHtml = '<table class="info-table">';
+        page.tableRows.forEach((row, idx) => {
+          tableHtml += '<tr>';
+          row.forEach(cell => {
+            tableHtml += idx === 0 ? `<th>${cell}</th>` : `<td>${cell}</td>`;
+          });
+          tableHtml += '</tr>';
+        });
+        tableHtml += '</table>';
+        if (page.tableNote) {
+          tableHtml += `<div class="info-note">${page.tableNote}</div>`;
+        }
+        tableSec.innerHTML = tableHtml;
+        container.appendChild(tableSec);
+      }
+
+      // Single Image Page view centered & maximum size
+      if (page.type === 'image' || page.image) {
+        const logoDiv = document.createElement('div');
+        logoDiv.className = 'app-logo-container';
+        const imgPath = page.image || page.img || 'Zuglogo.png';
+        logoDiv.innerHTML = `<img src="${imgPath}" alt="${page.title}" class="app-logo" onclick="openLightbox('${imgPath}', '${page.title}')">`;
+        container.appendChild(logoDiv);
+        return;
+      }
+
+      // Alle Einzel-Items (Buttons, Cards, Checklisten) iterieren
+      if (page.items) {
+        page.items.forEach(item => {
+          let el;
+          
+          if (page.type === 'buttons' || page.type === 'doc_buttons') {
+            el = document.createElement('div');
+            el.className = 'btn';
+            
+            // Wenn Card inline gefordert ist
+            if(item.card) {
+                el.className = 'card';
+                el.innerHTML = `<span class="card-title">${item.label}</span><span class="card-value">${item.val}</span>`;
+            } else {
+                el.innerHTML = `<span>${item.label}</span><span class="btn-arrow">&#8250;</span>`;
+                el.onclick = () => {
+                  if (item.target) {
+                    navigateTo(item.target);
+                  } else if (item.img) {
+                    openLightbox(item.img, item.label);
+                  } else if (item.passwordProtected) {
+                    openPasswordModal('internal_ablaeufe');
+                  } else if (item.url) {
+                    window.open(item.url, '_blank');
+                  } else if (item.pdf) {
+                    showToast('Öffne Datei: ' + item.pdf);
+                  }
+                };
+            }
+          } 
+          else if (page.type === 'cards' || page.type === 'bepo_special' || page.type === 'table_cards') {
+            el = document.createElement('div');
+            el.className = 'card';
+            let valHtml = item.val ? `<span class="card-value" ${item.color ? `style="color:${item.color}"` : ''}>${item.val}</span>` : '';
+            el.innerHTML = `<span class="card-title">${item.label}</span>${valHtml}`;
+            if (item.note) el.classList.add('info-note');
+          } 
+          else if (page.type === 'checklist') {
+            el = document.createElement('div');
+            el.className = 'checklist-item';
+            el.innerHTML = `<div class="checklist-checkbox">&#10003;</div><div class="checklist-text">${item.label}</div>`;
+            el.onclick = () => el.classList.toggle('checked');
+          } 
+          else if (page.type === 'vev_guide') {
+            el = document.createElement('div');
+            el.className = 'collapsible-section';
+            let pointsHtml = item.points.map(p => `<div class="collapsible-item">${p}</div>`).join('');
+            el.innerHTML = `
+              <button class="collapsible-trigger" onclick="this.parentElement.classList.toggle('open')">
+                ${item.title} <span class="collapsible-arrow">&#9660;</span>
+              </button>
+              <div class="collapsible-content">
+                <div class="collapsible-list">${pointsHtml}</div>
+              </div>
+            `;
+          }
+
+          if (el) container.appendChild(el);
+        });
+      }
+
+      // Extra Button Support für bepo_special
+      if (page.extraButton) {
+        const btn = document.createElement('div');
+        btn.className = 'btn';
+        btn.innerHTML = `<span>${page.extraButton.label}</span><span class="btn-arrow">&#8250;</span>`;
+        btn.onclick = () => navigateTo(page.extraButton.target);
+        container.appendChild(btn);
+      }
+    }
+
+    function navigateTo(pageId) {
+      if (appTree[pageId]) {
+        historyStack.push(pageId);
+        renderPage(pageId);
+      } else {
+        showToast('Seite nicht gefunden');
+      }
+    }
+
+    function goBack() {
+      if (historyStack.length > 1) {
+        historyStack.pop();
+        renderPage(historyStack[historyStack.length - 1]);
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.classList.add('visible');
+      setTimeout(() => toast.classList.remove('visible'), 3000);
+    }
+
+    function openPasswordModal(target) {
+      const modal = document.getElementById('password-modal');
+      modal.hidden = false;
+      document.getElementById('password-submit').onclick = () => {
+        const val = document.getElementById('password-input').value;
+        if (val) {
+          modal.hidden = true;
+          document.getElementById('password-input').value = '';
+          navigateTo(target);
+        } else {
+          document.getElementById('password-hint').innerText = 'Bitte Passwort eingeben';
+        }
+      };
+    }
+
+    document.getElementById('password-modal-close').onclick = () => {
+      document.getElementById('password-modal').hidden = true;
+    };
+
+    /* --- Lightbox Zoom & Pan Logic --- */
+    let zoomScale = 1;
+    let posX = 0;
+    let posY = 0;
+    let startX = 0;
+    let startY = 0;
+    let initialPinchDistance = 0;
+    let initialScale = 1;
+    let isDragging = false;
+    let lastTapTime = 0;
+
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxTitle = document.getElementById('lightbox-title');
+    const lightboxBody = document.getElementById('lightbox-body');
+
+    function updateTransform() {
+      lightboxImg.style.transform = `translate(${posX}px, ${posY}px) scale(${zoomScale})`;
+    }
+
+    function resetZoom() {
+      zoomScale = 1;
+      posX = 0;
+      posY = 0;
+      updateTransform();
+    }
+
+    function openLightbox(src, title) {
+      lightboxImg.src = src;
+      lightboxTitle.innerText = title || 'Bildansicht';
+      resetZoom();
+      lightbox.hidden = false;
+    }
+
+    function closeLightbox() {
+      lightbox.hidden = true;
+      lightboxImg.src = '';
+    }
+
+    document.getElementById('lightbox-close').onclick = closeLightbox;
+    document.getElementById('zoom-in').onclick = () => {
+      zoomScale = Math.min(zoomScale * 1.4, 5);
+      updateTransform();
+    };
+    document.getElementById('zoom-out').onclick = () => {
+      zoomScale = Math.max(zoomScale / 1.4, 0.8);
+      if (zoomScale <= 1) resetZoom();
+      else updateTransform();
+    };
+    document.getElementById('zoom-reset').onclick = resetZoom;
+
+    // Touch events for Pinch & Pan
+    lightboxBody.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        // Double tap detection
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapTime;
+        if (tapLength < 300 && tapLength > 0) {
+          if (zoomScale > 1) resetZoom();
+          else {
+            zoomScale = 2.5;
+            updateTransform();
+          }
+          e.preventDefault();
+          return;
+        }
+        lastTapTime = currentTime;
+
+        // Pan start
+        isDragging = true;
+        startX = e.touches[0].clientX - posX;
+        startY = e.touches[0].clientY - posY;
+      } else if (e.touches.length === 2) {
+        // Pinch start
+        isDragging = false;
+        initialPinchDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        initialScale = zoomScale;
+      }
+    }, { passive: false });
+
+    lightboxBody.addEventListener('touchmove', (e) => {
+      if (isDragging && e.touches.length === 1 && zoomScale > 1) {
+        e.preventDefault();
+        posX = e.touches[0].clientX - startX;
+        posY = e.touches[0].clientY - startY;
+        updateTransform();
+      } else if (e.touches.length === 2) {
+        e.preventDefault();
+        const currentDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        if (initialPinchDistance > 0) {
+          const newScale = initialScale * (currentDistance / initialPinchDistance);
+          zoomScale = Math.min(Math.max(newScale, 0.8), 5);
+          updateTransform();
+        }
+      }
+    }, { passive: false });
+
+    lightboxBody.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) initialPinchDistance = 0;
+      if (e.touches.length === 0) isDragging = false;
+    });
+
+    // Mouse wheel zoom support
+    lightboxBody.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        zoomScale = Math.min(zoomScale * 1.2, 5);
+      } else {
+        zoomScale = Math.max(zoomScale / 1.2, 0.8);
+        if (zoomScale <= 1) posX = posY = 0;
+      }
+      updateTransform();
+    }, { passive: false });
+
+    // Initiales Rendern
+    window.onload = () => {
+      renderPage('home');
+    };
+  </script>
+</body>
+</html>
