@@ -1,0 +1,17 @@
+{
+  "name": "Streifenhelfer",
+  "short_name": "Streifenhelfer",
+  "description": "Schnellübersicht für den Streifendienst",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a2540",
+  "theme_color": "#0a2540",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
