@@ -1,0 +1,17 @@
+{
+"name": "Streifenhelfer",
+"short_name": "Streifenhelfer",
+"description": "Streifenhelfer",
+"start_url": "./streifenhelfer.html",
+"display": "standalone",
+"background_color": "#f4f6f9",
+"theme_color": "#0a2540",
+"icons": [
+{
+"src": "Zuglogo.png",
+"sizes": "192x192 512x512",
+"type": "image/png",
+"purpose": "any maskable"
+}
+]
+}
