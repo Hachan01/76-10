@@ -1,4 +1,4 @@
-const CACHE_NAME = 'streifenhelfer-v3';
+const CACHE_NAME = 'streifenhelfer-v4';
 
 const ASSETS_TO_CACHE = [
   './',
