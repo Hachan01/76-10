@@ -1,7 +1,7 @@
 const CACHE_NAME = 'streifenhelfer-cache-v1';
 const ASSETS_TO_CACHE = [
   './',
-  './index.html',
+  './streifenhelfer.html',
   './manifest.json',
   './Zuglogo.png'
 ];
