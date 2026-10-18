@@ -1,6 +1,5 @@
-const CACHE_NAME = 'streifenhelfer-v2'; // Versionsnummer erhöht -> erzwingt Aktualisierung
+const CACHE_NAME = 'streifenhelfer-v3';
 
-// Liste aller Dateien, die offline verfügbar sein sollen
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
