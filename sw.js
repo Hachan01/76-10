@@ -1,4 +1,4 @@
-const CACHE_NAME = 'streifenhelfer-v4';
+const CACHE_NAME = 'streifenhelfer-v5';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -21,7 +21,11 @@ const ASSETS_TO_CACHE = [
   './bild8.png',
   './bild9.png',
   './bild10.png',
-  './bild11.png'
+  './bild11.png',
+  './Datenerhebung_Drohnen.pdf',
+  './Taschenkarte_Drohne.pdf',
+  './symbolePKK.pdf',
+  './tatbestaende_drohnen.pdf'
 ];
 
 // Installation & Pre-Caching
